@@ -29,7 +29,6 @@ def obtener_o_crear(
             canal=canal,
             telefono_verificado=telefono_verificado,
             numero_conversacion=1,
-            requiere_humano=False,
             urgente=False,
             creada_en=ahora,
             actualizada_en=ahora,
@@ -82,9 +81,8 @@ def vincular_propietario(sesion_bd: Session, sesion_id: str, propietario_id: int
         chat.propietario_id = propietario_id
 
 
-def marcar_derivacion(sesion_bd: Session, sesion_id: str, motivo: str, urgente: bool) -> None:
+def marcar_urgencia(sesion_bd: Session, sesion_id: str, motivo: str) -> None:
     chat = sesion_bd.get(SesionChat, sesion_id)
     if chat is not None:
-        chat.requiere_humano = True
-        chat.urgente = chat.urgente or urgente
-        chat.motivo_derivacion = motivo[:500]
+        chat.urgente = True
+        chat.motivo_urgencia = motivo[:500]

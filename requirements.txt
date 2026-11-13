@@ -4,11 +4,11 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 SQLAlchemy>=2.0,<3
 python-dotenv>=1.0
+httpx>=0.27           # envío de mensajes a WhatsApp (y TestClient en las pruebas)
 tzdata>=2024.1        # base de zonas horarias (necesaria en Windows)
 
 # Pruebas
 pytest>=8
-httpx>=0.27           # lo usa el TestClient de FastAPI
 
 # Drivers para migrar de SQLite (descomenta el que necesites)
 # psycopg[binary]>=3.1   # PostgreSQL: DATABASE_URL=postgresql+psycopg://usuario:clave@host:5432/veterinaria

@@ -8,7 +8,7 @@
   const entrada = document.getElementById("entrada");
   const botonEnviar = document.getElementById("enviar");
   const botonNueva = document.getElementById("nueva");
-  const avisoHumano = document.getElementById("aviso-humano");
+  const avisoUrgencia = document.getElementById("aviso-urgencia");
 
   let sesionId = null;
   let nombreClinica = "la clínica";
@@ -52,7 +52,7 @@
 
   function nuevaConversacion() {
     sesionId = null;
-    avisoHumano.hidden = true;
+    avisoUrgencia.hidden = true;
     mensajes.replaceChildren();
     saludar();
     entrada.focus();
@@ -86,7 +86,7 @@
       }
       sesionId = datos.sesion_id;
       agregarMensaje(datos.respuesta, "bot");
-      if (datos.requiere_humano) avisoHumano.hidden = false;
+      if (datos.urgencia) avisoUrgencia.hidden = false;
     } catch (error) {
       escribiendo.remove();
       agregarMensaje("No hay conexión con el servidor. Revisa tu conexión e intenta de nuevo.", "bot", "mensaje--error");
@@ -123,9 +123,11 @@
         nombreClinica = datos.nombre;
         document.getElementById("nombre-clinica").textContent = datos.nombre;
         document.title = "Chat · " + datos.nombre;
-        const tel = document.getElementById("tel-urgencias");
-        tel.textContent = datos.telefono_urgencias;
-        tel.href = "tel:" + datos.telefono_urgencias.replace(/\s+/g, "");
+        for (const id of ["tel-urgencias", "tel-urgencias-aviso"]) {
+          const tel = document.getElementById(id);
+          tel.textContent = datos.telefono_urgencias;
+          tel.href = "tel:" + datos.telefono_urgencias.replace(/[^0-9+]/g, "");
+        }
       }
     })
     .catch(() => {})

@@ -105,6 +105,7 @@ body {
   font-size: 14px;
   border-bottom: 1px solid var(--borde);
 }
+.chat__aviso a { color: inherit; font-weight: 700; white-space: nowrap; }
 
 .chat__mensajes {
   flex: 1;

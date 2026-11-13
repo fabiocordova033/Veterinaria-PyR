@@ -10,7 +10,8 @@ import httpx2
 import pytest
 from anthropic.types import TextBlock, ThinkingBlock, ToolUseBlock
 
-from app.bot.motor import MENSAJE_NO_PUEDO, ErrorServicioIA, MotorBot
+from app.bot.motor import ErrorServicioIA, MotorBot, mensaje_no_puedo
+from app.config import ajustes
 from app.db.base import transaccion
 from app.db.modelos import MensajeChat, SesionChat
 from tests.conftest import AHORA
@@ -66,7 +67,7 @@ def test_turno_con_herramienta_identifica_al_cliente_y_guarda_el_historial(datos
     resultado = motor.responder("web-" + "a" * 32, "Mi celular es 900 000 001")
 
     assert resultado.texto.startswith("¡Hola, Ana!")
-    assert resultado.requiere_humano is False
+    assert resultado.urgencia is False
     # El resultado de la herramienta llegó al modelo en la segunda llamada.
     resultado_herramienta = llm.solicitudes[1]["messages"][-1]["content"][0]
     assert resultado_herramienta["type"] == "tool_result" and resultado_herramienta["tool_use_id"] == "toolu_1"
@@ -109,21 +110,22 @@ def test_cada_mensaje_del_cliente_lleva_el_contexto_con_la_fecha(datos):
     assert "<contexto>" not in contenido[1]["text"]
 
 
-def test_derivacion_a_humano_se_refleja_en_la_respuesta(datos):
+def test_urgencia_se_refleja_en_la_respuesta(datos):
     llm = LLMSimulado(
-        respuesta("tool_use", herramienta("toolu_1", "derivar_a_humano", {"motivo": "Comió veneno", "urgente": True})),
+        respuesta("tool_use", herramienta("toolu_1", "registrar_urgencia", {"motivo": "Comió veneno"})),
         respuesta("end_turn", texto("Llama ya al 987 555 911. Una persona te va a atender.")),
     )
     resultado = crear_motor(llm).responder("web-" + "d" * 32, "Mi perro comió veneno para ratas")
-    assert resultado.requiere_humano is True
+    assert resultado.urgencia is True
 
 
 def test_rechazo_del_modelo_devuelve_un_mensaje_amable(datos):
     llm = LLMSimulado(respuesta("refusal"))
     sesion = "web-" + "e" * 32
     resultado = crear_motor(llm).responder(sesion, "...")
-    assert resultado.texto == MENSAJE_NO_PUEDO
-    assert mensajes_guardados(sesion)[-1] == ("assistant", [{"type": "text", "text": MENSAJE_NO_PUEDO}])
+    assert resultado.texto == mensaje_no_puedo(ajustes)
+    assert ajustes.clinica_telefono in resultado.texto  # da el teléfono en vez de prometer contacto
+    assert mensajes_guardados(sesion)[-1] == ("assistant", [{"type": "text", "text": mensaje_no_puedo(ajustes)}])
 
 
 def test_error_de_la_api_se_informa_sin_perder_el_mensaje(datos):

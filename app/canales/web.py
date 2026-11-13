@@ -30,7 +30,7 @@ class SolicitudChat(BaseModel):
 class RespuestaChat(BaseModel):
     sesion_id: str
     respuesta: str
-    requiere_humano: bool
+    urgencia: bool  # el bot registró una posible urgencia en este mensaje
 
 
 @router.post("/chat", response_model=RespuestaChat)
@@ -52,7 +52,7 @@ def chat(solicitud: SolicitudChat, motor: MotorBot = Depends(obtener_motor)) -> 
         raise HTTPException(status_code=503, detail=str(error)) from error
 
     return RespuestaChat(
-        sesion_id=respuesta.sesion_id, respuesta=respuesta.texto, requiere_humano=respuesta.requiere_humano
+        sesion_id=respuesta.sesion_id, respuesta=respuesta.texto, urgencia=respuesta.urgencia
     )
 
 

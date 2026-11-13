@@ -106,13 +106,19 @@ def test_argumentos_invalidos_devuelven_error_y_no_excepcion(datos, ctx):
     assert es_error and "no existe" in resultado["error"]
 
 
-def test_derivar_a_humano_marca_la_sesion(ctx):
-    resultado, es_error = ejecutar("derivar_a_humano", {"motivo": "Convulsiones", "urgente": True}, ctx)
-    assert not es_error and resultado["derivado"] is True
-    assert ctx.requiere_humano is True
+def test_registrar_urgencia_marca_la_sesion_y_da_el_telefono(ctx):
+    resultado, es_error = ejecutar("registrar_urgencia", {"motivo": "Convulsiones"}, ctx)
+    assert not es_error and resultado["registrada"] is True
+    assert resultado["telefono_urgencias"]
+    assert ctx.urgencia is True
     with transaccion() as bd:
         chat = bd.get(SesionChat, "web-prueba")
-        assert chat.requiere_humano and chat.urgente and chat.motivo_derivacion == "Convulsiones"
+        assert chat.urgente and chat.motivo_urgencia == "Convulsiones"
+
+
+def test_ya_no_existe_la_derivacion_a_una_persona():
+    nombres = {d["name"] for d in DEFINICIONES}
+    assert "derivar_a_humano" not in nombres and "registrar_urgencia" in nombres
 
 
 @pytest.mark.parametrize("escrito", ["+51 987 111 222", "51987111222", "987-111-222", "987 111 222"])

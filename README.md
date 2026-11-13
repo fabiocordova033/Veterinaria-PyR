@@ -12,14 +12,18 @@ Configurado para Perú: hora de Lima (`America/Lima`), precios en soles (S/) con
 
 ## Qué hace el bot
 
-- Al empezar pide el número de celular del cliente (como funcionaría por WhatsApp) y a partir de ahí solo muestra información de las mascotas de ese propietario.
+- Funciona por su cuenta: nadie del equipo tiene que leer ni contestar el chat. Lo que no puede resolver lo redirige al teléfono de la clínica.
+- Funciona en la página web y en **WhatsApp** (Meta Cloud API). En WhatsApp no pide el celular: usa el número verificado desde el que escribe el cliente.
+- En la web pide el número de celular al empezar. A partir de ahí solo muestra información de las mascotas de ese propietario.
 - Responde sobre servicios, precios, horario de atención, dirección y veterinarios.
 - Consulta disponibilidad real según el horario de cada veterinario, la duración del servicio y las citas ya agendadas.
 - Agenda, cancela y reprograma citas, siempre después de pedir confirmación explícita.
 - Muestra las próximas citas y la próxima vacuna de cada mascota.
 - No da diagnósticos ni dosis de medicamentos.
-- Ante una posible urgencia (envenenamiento, convulsiones, sangrado, dificultad para respirar…) da el teléfono de urgencias, indica que lo atenderá una persona y marca la conversación para el equipo.
-- Si no sabe algo, lo dice y ofrece comunicar al cliente con la clínica.
+- Ante una posible urgencia (envenenamiento, convulsiones, sangrado, dificultad para respirar…) registra la urgencia, da el teléfono de urgencias y pide llamar ya: en esa llamada lo atiende una persona.
+- Si no sabe algo, lo dice y da el teléfono y el horario de la clínica. Nunca promete que alguien responderá por el chat.
+- En WhatsApp junta los mensajes seguidos: si el cliente escribe "hola" / "quiero una cita" / "para Luna", espera unos segundos y responde una sola vez.
+- Si recibe una nota de voz, foto o sticker, explica que por ahora solo lee texto y pide que lo escriban.
 
 ## Instalación y ejecución
 
@@ -122,10 +126,12 @@ Las pruebas no llaman a la API de Anthropic. Usan un Claude simulado y una base 
   - Disponibilidad.
   - Mascotas de otros clientes.
   - **Ocho solicitudes simultáneas por el mismo horario: solo una se agenda.**
-- **Herramientas** (`tests/test_herramientas.py`): identificación obligatoria, aislamiento entre clientes, errores legibles para el modelo, derivación a una persona.
+- **Herramientas** (`tests/test_herramientas.py`): identificación obligatoria, aislamiento entre clientes, errores legibles para el modelo, registro de urgencias, celulares peruanos.
 - **Motor del bot** (`tests/test_motor.py`): bucle de herramientas, historial guardado y reenviado sin cambios, rechazos del modelo, errores de la API, conversaciones nuevas tras inactividad.
 - **SDK** (`tests/test_llm_sdk.py`): forma exacta de las solicitudes que arma el SDK `anthropic`, capturadas con un transporte HTTP simulado (sin red).
 - **API web** (`tests/test_api.py`): endpoint `/chat`, sesiones y página de chat.
+- **Mensajes seguidos** (`tests/test_agrupador.py`): se juntan los que llegan con poca pausa, cada cliente por separado, nunca dos respuestas en curso para el mismo chat, espera máxima si el cliente no para de escribir.
+- **WhatsApp** (`tests/test_whatsapp.py`): webhooks simulados de Meta. Cubre verificación, firma, mensajes repetidos, audios y fotos, formato de envío a la API de WhatsApp y un recorrido completo con el motor del bot.
 
 ## Estructura del proyecto
 
@@ -147,9 +153,11 @@ app/
     prompt.py            Reglas del bot (system prompt)
     llm.py               Cliente de la API de Anthropic
     sesiones.py          Historial por sesión
+    agrupador.py         Junta los mensajes seguidos de un cliente (WhatsApp)
   canales/               Adaptadores de entrada/salida
     comun.py             Motor compartido por los canales
     web.py               POST /chat (página web)
+    whatsapp.py          Webhook de WhatsApp (Meta Cloud API) y envío de respuestas
 scripts/crear_base.py    Crea la base y carga datos de prueba
 static/                  Página de chat (HTML, JS y CSS)
 tests/                   Pruebas (pytest)
@@ -176,7 +184,7 @@ tests/                   Pruebas (pytest)
 | `reprogramar_cita(cita_id, nueva_fecha_hora)` | Mueve la cita (mismo veterinario y servicio). |
 | `ver_citas(mascota_id)` | Próximas citas de la mascota. |
 | `proxima_vacuna(mascota_id)` | Próxima dosis, vacunas atrasadas y últimas aplicaciones. |
-| `derivar_a_humano(motivo, urgente)` | Marca la conversación para que la atienda una persona. |
+| `registrar_urgencia(motivo)` | Registra una posible urgencia en la conversación y devuelve el teléfono de urgencias. |
 
 ### Qué valida el backend (y no el modelo)
 
@@ -220,6 +228,10 @@ La segunda solicitud espera, ve la cita recién creada y recibe un error claro. 
 | `AGENDA_ANTICIPACION_MINUTOS` | `60` | Anticipación mínima para agendar. |
 | `AGENDA_DIAS_MAXIMOS` | `60` | Hasta cuántos días adelante se puede agendar. |
 | `SESION_MINUTOS_INACTIVIDAD` | `720` | Tras este tiempo sin mensajes empieza una conversación nueva. |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | — | Credenciales de WhatsApp. El canal se activa cuando las cuatro tienen valor. |
+| `WHATSAPP_VERSION_API` | `v24.0` | Versión de la Graph API de Meta. |
+| `WHATSAPP_ESPERA_SEGUNDOS` | `4` | Pausa sin mensajes nuevos tras la que se responde. |
+| `WHATSAPP_ESPERA_MAXIMA_SEGUNDOS` | `15` | Si el cliente no deja de escribir, se responde igual tras este tiempo. |
 
 Las fechas se guardan en hora local de la clínica, sin zona horaria. `dia_semana` usa 0 = lunes … 6 = domingo.
 
@@ -235,36 +247,82 @@ No hay SQL propio de SQLite en la lógica. Las restricciones (`CHECK`, llaves fo
 
 ## Conectar WhatsApp (Meta Cloud API)
 
-La lógica del bot está en `MotorBot` y no depende del canal. Para WhatsApp basta con un nuevo adaptador `app/canales/whatsapp.py` que:
+El canal ya está implementado en `app/canales/whatsapp.py`. Solo falta configurarlo en Meta y poner las credenciales en el `.env`.
 
-1. **Verifique el webhook** (`GET`): si `hub.verify_token` coincide con tu token, responde con `hub.challenge`.
-2. **Reciba mensajes** (`POST`): valide la firma `X-Hub-Signature-256` con el *app secret*, responda 200 de inmediato e ignore mensajes repetidos (por su `id`).
-3. **Llame al motor** con el número del remitente como sesión y como teléfono verificado. WhatsApp lo entrega con el código de país (por ejemplo `51987111222`); el backend le quita el `51` para buscarlo. Así el bot no pide el celular y solo puede consultar ese número:
+### Cómo responde en WhatsApp
 
-   ```python
-   respuesta = obtener_motor().responder(
-       sesion_id=f"whatsapp-{numero}",
-       texto=texto_del_mensaje,
-       canal="whatsapp",
-       telefono_verificado=numero,
-   )
-   ```
+1. Meta envía cada mensaje a `POST /whatsapp/webhook`. El servidor valida la firma `X-Hub-Signature-256` (solo Meta puede llamarlo), ignora los repetidos y los avisos de entrega, y responde 200 de inmediato.
+2. **Los mensajes seguidos se juntan.** Cada mensaje nuevo reinicia una espera de `WHATSAPP_ESPERA_SEGUNDOS` (4 s). Cuando el cliente deja de escribir, todos sus mensajes van juntos al bot y recibe una sola respuesta. Si no para de escribir, se responde igual a los `WHATSAPP_ESPERA_MAXIMA_SEGUNDOS` (15 s). Lo que escriba mientras el bot responde se junta para la respuesta siguiente.
+3. El bot usa como sesión `whatsapp-<número>` y como celular verificado el número del remitente (`51987111222`; se le quita el `51` para buscarlo). Por eso no pide el celular y solo puede consultar los datos de ese número.
+4. Las notas de voz, fotos, videos y stickers llegan al bot como una marca `[Adjunto: ...]`; el bot explica que por ahora solo lee texto. Si una foto trae texto (leyenda), también lo lee.
+5. La respuesta se envía con la API de WhatsApp. Si pasa de 4096 caracteres, se parte en varios mensajes. El mensaje del cliente se marca como leído.
 
-4. **Envíe la respuesta** con `POST https://graph.facebook.com/<versión>/<PHONE_NUMBER_ID>/messages` (token de acceso como Bearer):
+### Configuración en Meta
 
-   ```json
-   {"messaging_product": "whatsapp", "to": "<numero>", "type": "text", "text": {"body": "<respuesta.texto>"}}
-   ```
+1. Crea una app en [Meta for Developers](https://developers.facebook.com/) y agrégale el producto **WhatsApp**. Meta te da un número de prueba al que puedes escribir desde hasta 5 celulares que registres.
+2. Copia estos datos en tu `.env`:
+   - `WHATSAPP_PHONE_NUMBER_ID`: el identificador del número, en la sección de WhatsApp de la app.
+   - `WHATSAPP_TOKEN`: el token de acceso. El que aparece en la configuración inicial dura 24 horas. Para uso real, crea un usuario del sistema en Meta Business y genera un token permanente con permiso para enviar mensajes de WhatsApp.
+   - `WHATSAPP_APP_SECRET`: la clave secreta de la app (configuración básica de la app).
+   - `WHATSAPP_VERIFY_TOKEN`: una palabra secreta que inventas tú.
+3. Publica el servidor con una dirección HTTPS (ver "Puesta en producción"). Para probar desde tu computadora puedes usar un túnel como ngrok o Cloudflare Tunnel.
+4. En la configuración de WhatsApp de la app, registra el webhook:
+   - URL: `https://<tu-dominio>/whatsapp/webhook`
+   - Token de verificación: el mismo de `WHATSAPP_VERIFY_TOKEN`.
+   - Suscríbete al campo **messages**.
+5. Escribe al número desde tu celular.
+6. Para atender clientes reales: agrega el número propio de la clínica y completa la verificación del negocio en Meta Business (puede pedir datos como el RUC).
 
-5. Se registre en `app/main.py` con `app.include_router(whatsapp.router)`.
+Costos y reglas de Meta (revísalos al configurar, porque cambian):
 
-Las conversaciones de WhatsApp se reinician solas tras `SESION_MINUTOS_INACTIVIDAD`, y el historial anterior queda guardado.
+- Responder dentro de las 24 horas desde el último mensaje del cliente no tiene costo.
+- Los mensajes que inicia la clínica (por ejemplo, recordatorios) necesitan plantillas aprobadas y sí tienen costo.
+- Meta no permite asistentes de IA de uso general en esta API, pero sí bots de atención de un negocio como este.
+
+## Puesta en producción
+
+Lo mínimo para que funcione con clientes reales:
+
+| Pieza | Recomendación | Por qué |
+|---|---|---|
+| **Servidor de la aplicación** | Una plataforma administrada (Railway, Render, Fly.io…) o un servidor virtual (VPS) | Debe estar encendido todo el día y tener HTTPS, que WhatsApp exige. Las plataformas dan HTTPS y despliegan directo desde GitHub; un VPS da más control, pero tú mantienes el sistema, el HTTPS y los reinicios. |
+| **Base de datos** | PostgreSQL administrado (el de la misma plataforma, Neon, Supabase…) | En las plataformas el disco se borra en cada despliegue, así que un archivo SQLite se perdería. PostgreSQL administrado incluye copias de seguridad. |
+| **Secretos** | Variables de entorno en el panel de la plataforma | `ANTHROPIC_API_KEY`, `DATABASE_URL`, `WHATSAPP_*` y `CLINICA_*`. El `.env` nunca se sube al repositorio. |
+| **Anthropic** | Cuenta con saldo y un límite de gasto mensual | Cada mensaje consume tokens. El log del bot registra cuántos usa cada respuesta. |
+| **Meta / WhatsApp** | App, número propio y verificación del negocio | Ver la sección anterior. |
+
+Comando de arranque en el servidor (un solo proceso: el agrupador de mensajes y los candados por sesión viven en memoria):
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+Para PostgreSQL agrega `psycopg[binary]` a `requirements.txt` y usa `DATABASE_URL=postgresql+psycopg://...`. Las tablas se crean solas al arrancar la aplicación. **En producción no ejecutes `scripts/crear_base.py`**, porque carga datos de prueba.
+
+### Datos reales de la clínica
+
+El bot lee veterinarios, horarios, servicios, clientes, mascotas, citas y vacunas de la base, pero **este proyecto no tiene un panel para administrarlos**. Antes de abrirlo a clientes hay que decidir cómo se cargan y se mantienen al día. Por ejemplo, marcar citas como atendidas, registrar vacunas aplicadas y dar de alta clientes nuevos. Opciones:
+
+- Importar desde Excel o CSV.
+- Un panel de administración sencillo para el personal.
+- Conectarlo al sistema que la clínica ya use.
+
+### Ruta sugerida
+
+1. Probar en tu computadora con tu API key (página web).
+2. Desplegar en una plataforma con PostgreSQL y probar la página pública.
+3. Conectar WhatsApp con el número de prueba de Meta.
+4. Cargar los datos reales de la clínica.
+5. Número propio, verificación del negocio y un piloto con pocos clientes.
+6. Abrirlo a todos los clientes.
 
 ## Limitaciones del prototipo
 
 - **Identificación en la web:** cualquiera que escriba un número registrado ve las mascotas y citas de ese cliente. Es solo una simulación de WhatsApp, donde el número sí está verificado. Para una web real hace falta verificar el número (por ejemplo, con un código por SMS).
 - **Protección de datos personales:** el sistema guarda datos de clientes y el texto de las conversaciones. En Perú esto está regulado por la Ley N.° 29733, de Protección de Datos Personales. Antes de usarlo con clientes reales, revisa con un asesor qué aviso de privacidad y consentimiento necesitas.
 - **Feriados:** la agenda no conoce los feriados (Fiestas Patrias, Navidad, etc.) y ofrecería horarios esos días si el veterinario tiene turno.
-- **Atención humana:** las derivaciones quedan marcadas en `sesion_chat` (`requiere_humano`, `urgente`, `motivo_derivacion`) y en el log, pero no hay un panel para el equipo.
-- **Varios procesos:** el turno por sesión se serializa con un candado en memoria. Con varios procesos o servidores habría que usar un bloqueo en la base o en Redis.
+- **Urgencias:** quedan registradas en `sesion_chat` (`urgente`, `motivo_urgencia`) y en el log, pero no hay un panel para verlas.
+- **Clientes nuevos:** el bot no registra clientes ni mascotas; si el número no existe, pide llamar o acercarse a la clínica.
+- **Un solo proceso:** el turno por sesión, el agrupador de mensajes y el control de repetidos de WhatsApp viven en memoria. Con varios procesos o servidores habría que pasarlos a la base o a Redis. Si el servidor se cae, se pierden los mensajes que estaban esperando esos pocos segundos.
+- **Bases creadas con una versión anterior:** si creaste la base antes de este cambio, vuelve a crearla con `python -m scripts.crear_base --reiniciar` (cambiaron columnas de `sesion_chat`).
 - **Confirmaciones:** la regla de pedir confirmación antes de agendar, cancelar o reprogramar está en las instrucciones del modelo. El backend valida los datos, pero no puede saber si el cliente dijo "sí".

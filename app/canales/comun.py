@@ -1,4 +1,4 @@
-"""Piezas compartidas por los canales (web hoy; WhatsApp después)."""
+"""Piezas compartidas por los canales (web y WhatsApp)."""
 
 from __future__ import annotations
 
@@ -12,16 +12,21 @@ _motor: MotorBot | None = None
 _candado = threading.Lock()
 
 
-def obtener_motor() -> MotorBot:
-    """Dependencia de FastAPI: un único motor para toda la aplicación, creado al primer uso.
+def motor_compartido() -> MotorBot:
+    """Un único motor para toda la aplicación, creado al primer uso.
 
-    Si falta la API key, el endpoint responde 503 con un mensaje claro en lugar de fallar al arrancar.
+    Lanza ErrorServicioIA si falta la API key (la aplicación arranca igual).
     """
     global _motor
     with _candado:
         if _motor is None:
-            try:
-                _motor = crear_motor_por_defecto()
-            except ErrorServicioIA as error:
-                raise HTTPException(status_code=503, detail=str(error)) from error
+            _motor = crear_motor_por_defecto()
         return _motor
+
+
+def obtener_motor() -> MotorBot:
+    """Dependencia de FastAPI: si falta la API key, el endpoint responde 503 con un mensaje claro."""
+    try:
+        return motor_compartido()
+    except ErrorServicioIA as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error

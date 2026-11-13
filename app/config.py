@@ -27,6 +27,11 @@ def _entero(nombre: str, por_defecto: int) -> int:
     return int(valor) if valor and valor.strip() else por_defecto
 
 
+def _decimal(nombre: str, por_defecto: float) -> float:
+    valor = os.getenv(nombre)
+    return float(valor) if valor and valor.strip() else por_defecto
+
+
 def _booleano(nombre: str, por_defecto: bool) -> bool:
     valor = os.getenv(nombre)
     if not valor or not valor.strip():
@@ -91,6 +96,15 @@ class Ajustes:
     minutos_inactividad_sesion: int
     digitos_telefono_local: int
 
+    # --- WhatsApp (Meta Cloud API); el canal se activa cuando los cuatro primeros tienen valor ---
+    whatsapp_token: str | None
+    whatsapp_phone_number_id: str | None
+    whatsapp_verify_token: str | None
+    whatsapp_app_secret: str | None
+    whatsapp_version_api: str
+    whatsapp_espera_segundos: float
+    whatsapp_espera_maxima_segundos: float
+
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.zona_horaria)
@@ -127,6 +141,14 @@ def cargar_ajustes() -> Ajustes:
         minutos_inactividad_sesion=_entero("SESION_MINUTOS_INACTIVIDAD", 720),
         # Celulares en Perú: 9 dígitos. Se usa para quitar el código de país (51 987111222 -> 987111222).
         digitos_telefono_local=_entero("TELEFONO_DIGITOS_LOCALES", 9),
+        whatsapp_token=_texto("WHATSAPP_TOKEN", "") or None,
+        whatsapp_phone_number_id=_texto("WHATSAPP_PHONE_NUMBER_ID", "") or None,
+        whatsapp_verify_token=_texto("WHATSAPP_VERIFY_TOKEN", "") or None,
+        whatsapp_app_secret=_texto("WHATSAPP_APP_SECRET", "") or None,
+        whatsapp_version_api=_texto("WHATSAPP_VERSION_API", "v24.0"),
+        # Paso 4: cuántos segundos esperar a que el cliente termine de escribir antes de responder.
+        whatsapp_espera_segundos=_decimal("WHATSAPP_ESPERA_SEGUNDOS", 4.0),
+        whatsapp_espera_maxima_segundos=_decimal("WHATSAPP_ESPERA_MAXIMA_SEGUNDOS", 15.0),
     )
 
 

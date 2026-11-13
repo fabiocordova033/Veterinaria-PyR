@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.canales import web
+from app.canales import web, whatsapp
 from app.config import RAIZ_PROYECTO
 from app.db.base import crear_tablas
 
@@ -19,10 +19,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 async def ciclo_de_vida(_app: FastAPI):
     crear_tablas()  # no borra nada; solo crea las tablas que falten
     yield
+    whatsapp.cerrar_canal()  # responde los mensajes de WhatsApp que estaban esperando
 
 
 app = FastAPI(title="Chatbot Clínica Veterinaria", lifespan=ciclo_de_vida)
 app.include_router(web.router)
+app.include_router(whatsapp.router)
 
 
 @app.get("/salud")

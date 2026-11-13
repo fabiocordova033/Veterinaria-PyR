@@ -14,7 +14,7 @@ class MotorSimulado:
 
     def responder(self, sesion_id, texto, *, canal="web", telefono_verificado=None):
         self.llamadas.append((sesion_id, texto, canal))
-        return RespuestaBot(sesion_id=sesion_id, texto=f"Recibí: {texto}", requiere_humano=False)
+        return RespuestaBot(sesion_id=sesion_id, texto=f"Recibí: {texto}", urgencia=False)
 
 
 @pytest.fixture

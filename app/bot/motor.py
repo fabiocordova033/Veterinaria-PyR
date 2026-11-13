@@ -38,13 +38,18 @@ from app.servicios import formato
 
 logger = logging.getLogger(__name__)
 
-MENSAJE_NO_PUEDO = (
-    "Lo siento, con eso no puedo ayudarte por este medio. Si quieres, te comunico con el equipo de la clínica."
-)
-MENSAJE_PROBLEMA = (
-    "Disculpa, tuve un problema procesando tu solicitud. ¿Me lo puedes repetir? "
-    "Si prefieres, te comunico con el equipo de la clínica."
-)
+def mensaje_no_puedo(ajustes: Ajustes) -> str:
+    return (
+        "Lo siento, con eso no puedo ayudarte por este medio. "
+        f"Si lo necesitas, puedes llamar a la clínica al {ajustes.clinica_telefono}."
+    )
+
+
+def mensaje_problema(ajustes: Ajustes) -> str:
+    return (
+        "Disculpa, tuve un problema procesando tu solicitud. ¿Me lo puedes repetir? "
+        f"Si es algo urgente, llama al {ajustes.clinica_telefono_urgencias}."
+    )
 
 
 class ErrorServicioIA(Exception):
@@ -55,7 +60,7 @@ class ErrorServicioIA(Exception):
 class RespuestaBot:
     sesion_id: str
     texto: str
-    requiere_humano: bool
+    urgencia: bool  # True si en este turno se registró una posible urgencia
 
 
 def _texto_cliente_seguro(texto: str) -> str:
@@ -114,7 +119,6 @@ class MotorBot:
                 ahora=ahora,
                 propietario_id=chat.propietario_id,
                 telefono_verificado=chat.telefono_verificado,
-                requiere_humano=chat.requiere_humano,
             )
 
         def anotar(mensaje: dict) -> None:
@@ -132,7 +136,7 @@ class MotorBot:
             }
         )
 
-        texto_final = MENSAJE_PROBLEMA
+        texto_final = mensaje_problema(self._ajustes)
         for _ in range(self._ajustes.max_iteraciones_herramientas):
             respuesta = self._llamar_modelo(mensajes)
             motivo = respuesta.stop_reason
@@ -157,14 +161,16 @@ class MotorBot:
                 # refusal, max_tokens o respuesta vacía: se guarda un mensaje simple en lugar
                 # de una respuesta incompleta (que podría traer una herramienta a medias).
                 logger.warning("Respuesta sin texto utilizable (stop_reason=%s, sesión %s)", motivo, sesion_id)
-                texto_final = MENSAJE_NO_PUEDO if motivo == "refusal" else MENSAJE_PROBLEMA
+                texto_final = (
+                    mensaje_no_puedo(self._ajustes) if motivo == "refusal" else mensaje_problema(self._ajustes)
+                )
                 anotar({"role": "assistant", "content": [{"type": "text", "text": texto_final}]})
             break
         else:
             logger.warning("Se alcanzó el máximo de llamadas a herramientas (sesión %s)", sesion_id)
             anotar({"role": "assistant", "content": [{"type": "text", "text": texto_final}]})
 
-        return RespuestaBot(sesion_id=sesion_id, texto=texto_final, requiere_humano=ctx.requiere_humano)
+        return RespuestaBot(sesion_id=sesion_id, texto=texto_final, urgencia=ctx.urgencia)
 
     def _contexto(self, ctx: ContextoHerramienta, canal: str) -> str:
         lineas = [

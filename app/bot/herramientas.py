@@ -35,7 +35,8 @@ class ContextoHerramienta:
     propietario_id: int | None = None
     # En WhatsApp el número lo entrega el canal (verificado); en la web se pide al cliente.
     telefono_verificado: str | None = None
-    requiere_humano: bool = False
+    # Se marca cuando en este turno se registró una urgencia.
+    urgencia: bool = False
 
 
 @dataclass
@@ -158,18 +159,15 @@ DEFINICIONES: list[dict[str, Any]] = [
         "input_schema": _esquema({"mascota_id": _ID_MASCOTA}, ["mascota_id"]),
     },
     {
-        "name": "derivar_a_humano",
+        "name": "registrar_urgencia",
         "description": (
-            "Marca la conversación para que la atienda una persona de la clínica. Llámala de inmediato ante "
-            "una posible urgencia (urgente=true), cuando el cliente pida hablar con alguien, o cuando no "
-            "puedas resolver lo que necesita."
+            "Registra que el cliente describió una posible urgencia médica y devuelve el teléfono de urgencias. "
+            "Llámala de inmediato ante envenenamiento, convulsiones, sangrado, dificultad para respirar, trauma "
+            "fuerte u otra situación que parezca grave, antes de responder."
         ),
         "input_schema": _esquema(
-            {
-                "motivo": {"type": "string", "description": "Resumen breve de lo que necesita el cliente."},
-                "urgente": {"type": "boolean", "description": "true si es una posible urgencia médica."},
-            },
-            ["motivo", "urgente"],
+            {"motivo": {"type": "string", "description": "Resumen breve de lo que le pasa a la mascota."}},
+            ["motivo"],
         ),
     },
 ]
@@ -229,8 +227,8 @@ def _buscar_cliente(bd: Session, entrada: dict, ctx: ContextoHerramienta) -> dic
     if propietario is None:
         return {
             "encontrado": False,
-            "mensaje": "No hay ningún cliente registrado con ese número. Pide que lo verifique; si no está "
-            "registrado, puede responder preguntas generales u ofrecer comunicarlo con la clínica.",
+            "mensaje": "No hay ningún cliente registrado con ese número. Pide que lo verifique. Si no está "
+            "registrado, puedes responder preguntas generales; para registrarse debe llamar o acercarse a la clínica.",
         }
     if ctx.propietario_id is not None and ctx.propietario_id != propietario.id:
         raise ErrorNegocio(
@@ -300,17 +298,15 @@ def _proxima_vacuna(bd: Session, entrada: dict, ctx: ContextoHerramienta) -> dic
     )
 
 
-def _derivar_a_humano(bd: Session, entrada: dict, ctx: ContextoHerramienta) -> dict:
+def _registrar_urgencia(bd: Session, entrada: dict, ctx: ContextoHerramienta) -> dict:
     motivo = _texto(entrada, "motivo")
-    urgente = entrada.get("urgente") is True
-    sesiones.marcar_derivacion(bd, ctx.sesion_id, motivo, urgente)
-    ctx.requiere_humano = True
-    logger.warning("Conversación %s derivada a una persona (urgente=%s): %s", ctx.sesion_id, urgente, motivo)
+    sesiones.marcar_urgencia(bd, ctx.sesion_id, motivo)
+    ctx.urgencia = True
+    logger.warning("Posible urgencia en la conversación %s: %s", ctx.sesion_id, motivo)
     return {
-        "derivado": True,
+        "registrada": True,
         "telefono_urgencias": ajustes.clinica_telefono_urgencias,
-        "telefono_clinica": ajustes.clinica_telefono,
-        "horario_atencion": ajustes.clinica_horario,
+        "indicacion": "Pide al cliente que llame ya a ese número: ahí lo atiende una persona del equipo.",
     }
 
 
@@ -323,7 +319,7 @@ _MANEJADORES: dict[str, Callable[[Session, dict, ContextoHerramienta], dict]] = 
     "reprogramar_cita": _reprogramar_cita,
     "ver_citas": _ver_citas,
     "proxima_vacuna": _proxima_vacuna,
-    "derivar_a_humano": _derivar_a_humano,
+    "registrar_urgencia": _registrar_urgencia,
 }
 
 assert set(_MANEJADORES) == {d["name"] for d in DEFINICIONES}, "Cada herramienta definida necesita su manejador"
@@ -340,20 +336,20 @@ def ejecutar_herramienta(nombre: str, entrada: Any, ctx: ContextoHerramienta) ->
     if not isinstance(entrada, dict):
         return ResultadoHerramienta(_json({"error": "Los argumentos deben ser un objeto JSON."}), es_error=True)
 
-    propietario_antes, humano_antes = ctx.propietario_id, ctx.requiere_humano
+    propietario_antes, urgencia_antes = ctx.propietario_id, ctx.urgencia
     try:
         with transaccion() as bd:
             datos = manejador(bd, entrada, ctx)
         logger.info("Herramienta %s ejecutada (sesión %s)", nombre, ctx.sesion_id)
         return ResultadoHerramienta(_json(datos))
     except ErrorNegocio as error:
-        ctx.propietario_id, ctx.requiere_humano = propietario_antes, humano_antes
+        ctx.propietario_id, ctx.urgencia = propietario_antes, urgencia_antes
         logger.info("Herramienta %s rechazada (sesión %s): %s", nombre, ctx.sesion_id, error)
         return ResultadoHerramienta(_json({"error": str(error)}), es_error=True)
     except Exception:
-        ctx.propietario_id, ctx.requiere_humano = propietario_antes, humano_antes
+        ctx.propietario_id, ctx.urgencia = propietario_antes, urgencia_antes
         logger.exception("Fallo inesperado en la herramienta %s (sesión %s)", nombre, ctx.sesion_id)
         return ResultadoHerramienta(
-            _json({"error": "Error interno del sistema. Ofrece al cliente comunicarlo con la clínica."}),
+            _json({"error": "Error interno del sistema. Discúlpate y dale al cliente el teléfono de la clínica."}),
             es_error=True,
         )

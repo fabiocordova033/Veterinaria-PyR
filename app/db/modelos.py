@@ -218,9 +218,9 @@ class SesionChat(Base):
     telefono_verificado: Mapped[str | None] = mapped_column(String(20))
     numero_conversacion: Mapped[int] = mapped_column(Integer, default=1)
     propietario_id: Mapped[int | None] = mapped_column(ForeignKey("propietario.id"))
-    requiere_humano: Mapped[bool] = mapped_column(Boolean, default=False)
     urgente: Mapped[bool] = mapped_column(Boolean, default=False)
-    motivo_derivacion: Mapped[str | None] = mapped_column(String(500))
+    # Urgencias registradas por el bot (el cliente fue enviado a llamar al teléfono de urgencias).
+    motivo_urgencia: Mapped[str | None] = mapped_column(String(500))
     creada_en: Mapped[datetime] = mapped_column(DateTime)
     actualizada_en: Mapped[datetime] = mapped_column(DateTime)
 
