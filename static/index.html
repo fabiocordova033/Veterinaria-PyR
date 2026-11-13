@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat de la clínica veterinaria</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <main class="chat" aria-label="Chat con la clínica veterinaria">
+    <header class="chat__cabecera">
+      <div class="chat__avatar" aria-hidden="true">🐾</div>
+      <div class="chat__titulo">
+        <h1 id="nombre-clinica">Clínica veterinaria</h1>
+        <p>Asistente virtual · Urgencias: <a id="tel-urgencias" href="#">—</a></p>
+      </div>
+      <button id="nueva" class="chat__nueva" type="button" title="Empezar una conversación nueva">Nueva<span class="solo-ancho"> conversación</span></button>
+    </header>
+
+    <div id="aviso-humano" class="chat__aviso" hidden>
+      Una persona del equipo revisará esta conversación.
+    </div>
+
+    <section id="mensajes" class="chat__mensajes" aria-live="polite"></section>
+
+    <form id="formulario" class="chat__formulario" autocomplete="off">
+      <textarea id="entrada" rows="1" maxlength="2000" placeholder="Escribe tu mensaje…" aria-label="Mensaje" required></textarea>
+      <button id="enviar" type="submit" aria-label="Enviar">Enviar</button>
+    </form>
+  </main>
+
+  <script src="chat.js"></script>
+</body>
+</html>

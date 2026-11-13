@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Configuración local y datos
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
