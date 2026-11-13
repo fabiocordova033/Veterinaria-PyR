@@ -69,12 +69,12 @@ DEFINICIONES: list[dict[str, Any]] = [
     {
         "name": "buscar_cliente",
         "description": (
-            "Busca al cliente por su número de teléfono y devuelve su nombre y sus mascotas (con sus id). "
-            "Llámala en cuanto el cliente te dé su teléfono, antes de hablar de mascotas, citas o vacunas. "
+            "Busca al cliente por su número de celular y devuelve su nombre y sus mascotas (con sus id). "
+            "Llámala en cuanto el cliente te dé su celular, antes de hablar de mascotas, citas o vacunas. "
             "La conversación queda asociada a ese cliente y solo podrás ver la información de sus mascotas."
         ),
         "input_schema": _esquema(
-            {"telefono": {"type": "string", "description": "Número de teléfono tal como lo escribió el cliente."}},
+            {"telefono": {"type": "string", "description": "Número de celular tal como lo escribió el cliente."}},
             ["telefono"],
         ),
     },
@@ -211,7 +211,7 @@ def _texto(entrada: dict, campo: str, max_largo: int = 500) -> str:
 def _requiere_cliente(ctx: ContextoHerramienta) -> int:
     if ctx.propietario_id is None:
         raise ErrorNegocio(
-            "Todavía no se ha identificado al cliente. Pide su número de teléfono y usa buscar_cliente."
+            "Todavía no se ha identificado al cliente. Pide su número de celular y usa buscar_cliente."
         )
     return ctx.propietario_id
 

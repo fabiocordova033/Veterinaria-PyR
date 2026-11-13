@@ -1,6 +1,8 @@
 # Chatbot para clínica veterinaria (prototipo)
 
-Asistente por chat que responde preguntas frecuentes y gestiona citas de una clínica veterinaria. Usa Claude (API de Anthropic) con *tool use*. El modelo **no escribe SQL**: solo llama funciones del backend, y el backend hace todas las validaciones.
+Asistente por chat que responde preguntas frecuentes y gestiona citas de una clínica veterinaria en **Lima, Perú**. Usa Claude (API de Anthropic) con *tool use*. El modelo **no escribe SQL**: solo llama funciones del backend, y el backend hace todas las validaciones.
+
+Configurado para Perú: hora de Lima (`America/Lima`), precios en soles (S/) con IGV incluido, celulares de 9 dígitos (acepta `+51`), DNI como documento y colegiatura CMVP para los veterinarios.
 
 - Backend: Python 3 + FastAPI
 - Base de datos: SQLite con SQLAlchemy 2.0. Se puede migrar a MySQL o PostgreSQL cambiando la URL.
@@ -10,7 +12,7 @@ Asistente por chat que responde preguntas frecuentes y gestiona citas de una cl�
 
 ## Qué hace el bot
 
-- Al empezar pide el teléfono del cliente (como funcionaría por WhatsApp) y a partir de ahí solo muestra información de las mascotas de ese propietario.
+- Al empezar pide el número de celular del cliente (como funcionaría por WhatsApp) y a partir de ahí solo muestra información de las mascotas de ese propietario.
 - Responde sobre servicios, precios, horario de atención, dirección y veterinarios.
 - Consulta disponibilidad real según el horario de cada veterinario, la duración del servicio y las citas ya agendadas.
 - Agenda, cancela y reprograma citas, siempre después de pedir confirmación explícita.
@@ -73,23 +75,31 @@ Requisitos: Python 3.10 o superior y una API key de Anthropic ([console.anthropi
 
 ### Datos de prueba
 
-| Teléfono   | Propietario           | Mascotas                    |
-|------------|-----------------------|-----------------------------|
-| 3001112233 | María Fernanda López  | Luna (perro), Michi (gato)  |
-| 3102223344 | Carlos Andrés Ramírez | Rocky (perro)               |
-| 3203334455 | Ana Sofía Martínez    | Nala (gata), Coco (conejo)  |
-| 3154445566 | Jorge Iván Castro     | Max (perro)                 |
-| 3015556677 | Lucía Herrera         | Simba (gato), Toby (perro)  |
+| Celular   | Propietario           | Mascotas                                 |
+|-----------|-----------------------|------------------------------------------|
+| 987111222 | Rosa Quispe Mamani    | Luna (perro), Michi (gato)               |
+| 986222333 | Luis Alberto Huamán   | Rocky (perro sin pelo del Perú)          |
+| 985333444 | Carmen Rojas Vargas   | Nala (gata), Coco (conejo)               |
+| 984444555 | Diego Salazar Torres  | Max (perro)                              |
+| 983555666 | Lucía Fernández Ramos | Simba (gato), Toby (perro)               |
 
-También se cargan 3 veterinarios con sus horarios, 5 servicios, citas próximas y pasadas (una cancelada), vacunas (una atrasada: la de Michi), medicamentos, una consulta con receta y una factura.
+También se cargan:
+
+- 3 veterinarios con sus horarios.
+- 5 servicios, en soles: consulta general S/ 70, vacunación S/ 60, desparasitación S/ 35, baño y corte S/ 60, profilaxis dental S/ 280.
+- Citas próximas y pasadas (una cancelada).
+- Vacunas, una de ellas atrasada (la de Michi).
+- Medicamentos, una consulta con receta y una factura.
+
+Todos los datos son de ejemplo. Antes de usarlo con clientes, pon en `.env` el nombre, la dirección y los teléfonos reales de la clínica.
 
 Ideas para probar:
 
-- "3001112233" → "¿Cuándo es la próxima cita de Luna?"
-- "Quiero agendar baño para Michi el sábado"
+- "987111222" (o "+51 987 111 222") → "¿Cuándo es la próxima cita de Luna?"
+- "Quiero sacar cita de baño para Michi el sábado"
 - "¿Qué vacuna le toca a Michi?"
 - "Necesito cambiar la cita de Luna para la tarde"
-- "¿Cuánto cuesta la limpieza dental?" (no requiere identificarse)
+- "¿Cuánto cuesta la profilaxis dental?" (no requiere identificarse)
 - "Mi perro se comió un veneno para ratas" → urgencia
 - "¿Qué dosis de amoxicilina le doy?" → no da dosis
 
@@ -128,7 +138,7 @@ app/
     modelos.py           Tablas (SQLAlchemy)
   servicios/             Lógica de negocio pura (sin IA ni HTTP)
     agenda.py            Disponibilidad, agendar, cancelar, reprogramar, ver citas
-    clientes.py          Búsqueda por teléfono y verificación de pertenencia
+    clientes.py          Búsqueda por celular y verificación de pertenencia
     catalogo.py          Servicios, precios, horario, dirección, veterinarios
     vacunas.py           Próxima vacuna
   bot/                   Todo lo relacionado con Claude, independiente del canal
@@ -201,7 +211,11 @@ La segunda solicitud espera, ve la cita recién creada y recibe un error claro. 
 | `ANTHROPIC_FALLBACKS` | `default` | Si el modelo rechaza una solicitud por sus filtros de seguridad, la API la reintenta con un modelo de respaldo. Déjalo vacío para apagarlo (por ejemplo, con modelos que no lo soportan). |
 | `ANTHROPIC_STRICT_TOOLS` | `true` | Validación estricta de argumentos de las herramientas. |
 | `DATABASE_URL` | `sqlite:///veterinaria.db` | Base de datos. Una ruta SQLite relativa se toma desde la raíz del proyecto. |
-| `CLINICA_*` | — | Nombre, dirección, teléfonos, horario de atención y zona horaria (`America/Bogota`). |
+| `CLINICA_*` | — | Nombre, dirección, teléfonos y horario de atención de la clínica. |
+| `CLINICA_ZONA_HORARIA` | `America/Lima` | Zona horaria para "hoy", "mañana" y la disponibilidad. |
+| `CLINICA_MONEDA` / `CLINICA_SIMBOLO_MONEDA` | `PEN` / `S/` | Moneda de los precios. |
+| `CLINICA_NOTA_PRECIOS` | `Precios en soles, incluyen IGV.` | Aclaración que acompaña los precios. |
+| `TELEFONO_DIGITOS_LOCALES` | `9` | Dígitos de un celular en Perú. Con esto, `+51 987 111 222` y `987111222` son el mismo cliente. |
 | `AGENDA_INTERVALO_MINUTOS` | `30` | Cada cuánto se ofrecen horarios. |
 | `AGENDA_ANTICIPACION_MINUTOS` | `60` | Anticipación mínima para agendar. |
 | `AGENDA_DIAS_MAXIMOS` | `60` | Hasta cuántos días adelante se puede agendar. |
@@ -225,7 +239,7 @@ La lógica del bot está en `MotorBot` y no depende del canal. Para WhatsApp bas
 
 1. **Verifique el webhook** (`GET`): si `hub.verify_token` coincide con tu token, responde con `hub.challenge`.
 2. **Reciba mensajes** (`POST`): valide la firma `X-Hub-Signature-256` con el *app secret*, responda 200 de inmediato e ignore mensajes repetidos (por su `id`).
-3. **Llame al motor** con el número del remitente como sesión y como teléfono verificado. Así el bot no pide el teléfono y solo puede consultar ese número:
+3. **Llame al motor** con el número del remitente como sesión y como teléfono verificado. WhatsApp lo entrega con el código de país (por ejemplo `51987111222`); el backend le quita el `51` para buscarlo. Así el bot no pide el celular y solo puede consultar ese número:
 
    ```python
    respuesta = obtener_motor().responder(
@@ -249,6 +263,8 @@ Las conversaciones de WhatsApp se reinician solas tras `SESION_MINUTOS_INACTIVID
 ## Limitaciones del prototipo
 
 - **Identificación en la web:** cualquiera que escriba un número registrado ve las mascotas y citas de ese cliente. Es solo una simulación de WhatsApp, donde el número sí está verificado. Para una web real hace falta verificar el número (por ejemplo, con un código por SMS).
+- **Protección de datos personales:** el sistema guarda datos de clientes y el texto de las conversaciones. En Perú esto está regulado por la Ley N.° 29733, de Protección de Datos Personales. Antes de usarlo con clientes reales, revisa con un asesor qué aviso de privacidad y consentimiento necesitas.
+- **Feriados:** la agenda no conoce los feriados (Fiestas Patrias, Navidad, etc.) y ofrecería horarios esos días si el veterinario tiene turno.
 - **Atención humana:** las derivaciones quedan marcadas en `sesion_chat` (`requiere_humano`, `urgente`, `motivo_derivacion`) y en el log, pero no hay un panel para el equipo.
 - **Varios procesos:** el turno por sesión se serializa con un candado en memoria. Con varios procesos o servidores habría que usar un bloqueo en la base o en Redis.
 - **Confirmaciones:** la regla de pedir confirmación antes de agendar, cancelar o reprogramar está en las instrucciones del modelo. El backend valida los datos, pero no puede saber si el cliente dijo "sí".

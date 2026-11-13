@@ -78,6 +78,9 @@ class Ajustes:
     clinica_telefono_urgencias: str
     clinica_horario: str
     zona_horaria: str
+    moneda: str  # código ISO, p. ej. PEN
+    simbolo_moneda: str  # p. ej. S/
+    nota_precios: str
 
     # --- Reglas de agenda ---
     intervalo_minutos: int
@@ -108,18 +111,22 @@ def cargar_ajustes() -> Ajustes:
         max_iteraciones_herramientas=_entero("BOT_MAX_ITERACIONES", 8),
         database_url=_url_base_datos(),
         clinica_nombre=_texto("CLINICA_NOMBRE", "Clínica Veterinaria Patitas"),
-        clinica_direccion=_texto("CLINICA_DIRECCION", "Calle 45 # 12-30, Bogotá"),
-        clinica_telefono=_texto("CLINICA_TELEFONO", "601 555 1234"),
-        clinica_telefono_urgencias=_texto("CLINICA_TELEFONO_URGENCIAS", "300 555 9911"),
+        clinica_direccion=_texto("CLINICA_DIRECCION", "Av. Benavides 1520, Miraflores, Lima"),
+        clinica_telefono=_texto("CLINICA_TELEFONO", "(01) 555 1234"),
+        clinica_telefono_urgencias=_texto("CLINICA_TELEFONO_URGENCIAS", "987 555 911"),
         clinica_horario=_texto(
             "CLINICA_HORARIO", "Lunes a viernes de 8:00 a. m. a 6:00 p. m.; sábados de 8:00 a. m. a 1:00 p. m."
         ),
-        zona_horaria=_texto("CLINICA_ZONA_HORARIA", "America/Bogota"),
+        zona_horaria=_texto("CLINICA_ZONA_HORARIA", "America/Lima"),
+        moneda=_texto("CLINICA_MONEDA", "PEN"),
+        simbolo_moneda=_texto("CLINICA_SIMBOLO_MONEDA", "S/"),
+        nota_precios=_texto("CLINICA_NOTA_PRECIOS", "Precios en soles, incluyen IGV."),
         intervalo_minutos=_entero("AGENDA_INTERVALO_MINUTOS", 30),
         anticipacion_minutos=_entero("AGENDA_ANTICIPACION_MINUTOS", 60),
         dias_maximos_agenda=_entero("AGENDA_DIAS_MAXIMOS", 60),
         minutos_inactividad_sesion=_entero("SESION_MINUTOS_INACTIVIDAD", 720),
-        digitos_telefono_local=_entero("TELEFONO_DIGITOS_LOCALES", 10),
+        # Celulares en Perú: 9 dígitos. Se usa para quitar el código de país (51 987111222 -> 987111222).
+        digitos_telefono_local=_entero("TELEFONO_DIGITOS_LOCALES", 9),
     )
 
 

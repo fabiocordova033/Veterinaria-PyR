@@ -37,7 +37,7 @@ def test_chat_crea_una_sesion_y_la_reutiliza(cliente):
 
 
 def test_chat_no_acepta_identificadores_de_otros_canales(cliente):
-    respuesta = cliente.post("/chat", json={"sesion_id": "whatsapp-573000000001", "mensaje": "Hola"}).json()
+    respuesta = cliente.post("/chat", json={"sesion_id": "whatsapp-51900000001", "mensaje": "Hola"}).json()
     assert respuesta["sesion_id"].startswith("web-")
     assert cliente.motor.llamadas[-1][0] == respuesta["sesion_id"]
 

@@ -44,7 +44,7 @@ def test_las_herramientas_de_cliente_exigen_identificacion(ctx, nombre):
 
 
 def test_buscar_cliente_asocia_la_sesion(datos, ctx):
-    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "+57 300 000 0001"}, ctx)
+    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "+51 900 000 001"}, ctx)
     assert not es_error
     assert resultado["encontrado"] is True
     assert [m["nombre"] for m in resultado["mascotas"]] == ["Firulais", "Mishi"]
@@ -54,36 +54,36 @@ def test_buscar_cliente_asocia_la_sesion(datos, ctx):
 
 
 def test_buscar_cliente_inexistente_no_asocia(ctx):
-    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "3999999999"}, ctx)
+    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "999999999"}, ctx)
     assert not es_error and resultado["encontrado"] is False
     assert ctx.propietario_id is None
 
 
 def test_no_se_puede_cambiar_de_cliente_en_la_misma_conversacion(datos, ctx):
-    ejecutar("buscar_cliente", {"telefono": "3000000001"}, ctx)
-    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "3000000002"}, ctx)
+    ejecutar("buscar_cliente", {"telefono": "900000001"}, ctx)
+    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "900000002"}, ctx)
     assert es_error and "otro cliente" in resultado["error"]
     assert ctx.propietario_id == datos.propietario_a
 
 
 def test_en_whatsapp_solo_se_consulta_el_numero_verificado(datos):
     with transaccion() as bd:
-        sesiones.obtener_o_crear(bd, "whatsapp-573000000001", "whatsapp", AHORA, "573000000001")
-    ctx = ContextoHerramienta(sesion_id="whatsapp-573000000001", ahora=AHORA, telefono_verificado="573000000001")
-    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "3000000002"}, ctx)
+        sesiones.obtener_o_crear(bd, "whatsapp-51900000001", "whatsapp", AHORA, "51900000001")
+    ctx = ContextoHerramienta(sesion_id="whatsapp-51900000001", ahora=AHORA, telefono_verificado="51900000001")
+    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "900000002"}, ctx)
     assert es_error and "solo se puede consultar" in resultado["error"]
-    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "3000000001"}, ctx)
+    resultado, es_error = ejecutar("buscar_cliente", {"telefono": "900000001"}, ctx)
     assert not es_error and resultado["propietario"]["nombre"] == "Ana"
 
 
 def test_no_se_ven_las_mascotas_de_otro_cliente(datos, ctx):
-    ejecutar("buscar_cliente", {"telefono": "3000000001"}, ctx)
+    ejecutar("buscar_cliente", {"telefono": "900000001"}, ctx)
     resultado, es_error = ejecutar("ver_citas", {"mascota_id": datos.b1}, ctx)
     assert es_error and "No encontré esa mascota" in resultado["error"]
 
 
 def test_agendar_por_herramienta_y_error_legible_si_choca(datos, ctx):
-    ejecutar("buscar_cliente", {"telefono": "3000000001"}, ctx)
+    ejecutar("buscar_cliente", {"telefono": "900000001"}, ctx)
     entrada = {
         "mascota_id": datos.a1, "servicio_id": datos.consulta, "veterinario_id": datos.vet1,
         "fecha_hora": "2030-01-08T09:00", "motivo": "Vacuna anual",
@@ -95,7 +95,7 @@ def test_agendar_por_herramienta_y_error_legible_si_choca(datos, ctx):
 
 
 def test_argumentos_invalidos_devuelven_error_y_no_excepcion(datos, ctx):
-    ejecutar("buscar_cliente", {"telefono": "3000000001"}, ctx)
+    ejecutar("buscar_cliente", {"telefono": "900000001"}, ctx)
     resultado, es_error = ejecutar(
         "consultar_disponibilidad", {"servicio_id": datos.consulta, "fecha": "el lunes"}, ctx
     )
@@ -113,3 +113,18 @@ def test_derivar_a_humano_marca_la_sesion(ctx):
     with transaccion() as bd:
         chat = bd.get(SesionChat, "web-prueba")
         assert chat.requiere_humano and chat.urgente and chat.motivo_derivacion == "Convulsiones"
+
+
+@pytest.mark.parametrize("escrito", ["+51 987 111 222", "51987111222", "987-111-222", "987 111 222"])
+def test_normaliza_celulares_de_peru(escrito):
+    from app.servicios.clientes import normalizar_telefono
+
+    assert normalizar_telefono(escrito) == "987111222"
+
+
+def test_info_servicios_en_soles(ctx):
+    resultado, es_error = ejecutar("info_servicios", {}, ctx)
+    assert not es_error
+    assert resultado["moneda"] == "PEN" and resultado["simbolo_moneda"] == "S/"
+    assert "IGV" in resultado["nota_precios"]
+    assert resultado["servicios"][0]["precio"] == 70

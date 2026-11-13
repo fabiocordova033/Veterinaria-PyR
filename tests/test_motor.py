@@ -58,12 +58,12 @@ def mensajes_guardados(sesion_id):
 
 def test_turno_con_herramienta_identifica_al_cliente_y_guarda_el_historial(datos):
     llm = LLMSimulado(
-        respuesta("tool_use", pensamiento(), herramienta("toolu_1", "buscar_cliente", {"telefono": "3000000001"})),
+        respuesta("tool_use", pensamiento(), herramienta("toolu_1", "buscar_cliente", {"telefono": "900000001"})),
         respuesta("end_turn", pensamiento(), texto("¡Hola, Ana! Veo a Firulais y a Mishi. ¿En qué te ayudo?")),
     )
     motor = crear_motor(llm)
 
-    resultado = motor.responder("web-" + "a" * 32, "Mi número es 300 000 0001")
+    resultado = motor.responder("web-" + "a" * 32, "Mi celular es 900 000 001")
 
     assert resultado.texto.startswith("¡Hola, Ana!")
     assert resultado.requiere_humano is False
@@ -80,7 +80,7 @@ def test_turno_con_herramienta_identifica_al_cliente_y_guarda_el_historial(datos
 def test_el_historial_se_reenvia_sin_cambios_en_el_siguiente_turno(datos):
     llm = LLMSimulado(
         respuesta("tool_use", pensamiento(), herramienta("toolu_1", "info_servicios", {})),
-        respuesta("end_turn", pensamiento(), texto("La consulta cuesta $60.000.")),
+        respuesta("end_turn", pensamiento(), texto("La consulta cuesta S/ 70.00.")),
         respuesta("end_turn", texto("¡Con gusto!")),
     )
     motor = crear_motor(llm)
@@ -112,7 +112,7 @@ def test_cada_mensaje_del_cliente_lleva_el_contexto_con_la_fecha(datos):
 def test_derivacion_a_humano_se_refleja_en_la_respuesta(datos):
     llm = LLMSimulado(
         respuesta("tool_use", herramienta("toolu_1", "derivar_a_humano", {"motivo": "Comió veneno", "urgente": True})),
-        respuesta("end_turn", texto("Llama ya al 300 555 9911. Una persona te va a atender.")),
+        respuesta("end_turn", texto("Llama ya al 987 555 911. Una persona te va a atender.")),
     )
     resultado = crear_motor(llm).responder("web-" + "d" * 32, "Mi perro comió veneno para ratas")
     assert resultado.requiere_humano is True
@@ -138,11 +138,11 @@ def test_error_de_la_api_se_informa_sin_perder_el_mensaje(datos):
 def test_tras_mucho_tiempo_inactiva_empieza_una_conversacion_nueva(datos):
     sesion = "web-" + "1" * 32
     llm = LLMSimulado(
-        respuesta("tool_use", herramienta("toolu_1", "buscar_cliente", {"telefono": "3000000001"})),
+        respuesta("tool_use", herramienta("toolu_1", "buscar_cliente", {"telefono": "900000001"})),
         respuesta("end_turn", texto("Hola Ana")),
-        respuesta("end_turn", texto("Hola de nuevo, ¿me das tu teléfono?")),
+        respuesta("end_turn", texto("Hola de nuevo, ¿me das tu celular?")),
     )
-    crear_motor(llm).responder(sesion, "3000000001")
+    crear_motor(llm).responder(sesion, "900000001")
     crear_motor(llm, reloj=lambda: AHORA + timedelta(days=2)).responder(sesion, "Hola")
 
     # La tercera solicitud ya no lleva el historial anterior y el cliente debe identificarse otra vez.

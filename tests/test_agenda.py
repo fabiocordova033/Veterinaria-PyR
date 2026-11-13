@@ -300,7 +300,7 @@ def test_ver_citas_muestra_solo_proximas_programadas_y_de_mascotas_propias(datos
     [
         ("2030-01-08T09:00", datetime(2030, 1, 8, 9, 0)),
         ("2030-01-08 09:00", datetime(2030, 1, 8, 9, 0)),
-        ("2030-01-08T14:00:00Z", datetime(2030, 1, 8, 9, 0)),  # UTC -> hora de Bogotá
+        ("2030-01-08T14:00:00Z", datetime(2030, 1, 8, 9, 0)),  # UTC -> hora de Lima
     ],
 )
 def test_interpretar_fecha_hora(texto, esperado):

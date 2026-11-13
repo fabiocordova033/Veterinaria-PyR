@@ -73,28 +73,31 @@ def cargar_datos() -> None:
 
     with transaccion() as bd:
         # --- Veterinarios y horarios -------------------------------------------------
-        laura = Veterinario(nombre="Dra. Laura Gómez", especialidad="Medicina general", tarjeta_profesional="MV-10234")
+        # En Perú el registro profesional es la colegiatura del CMVP (Colegio Médico Veterinario del Perú).
+        patricia = Veterinario(
+            nombre="Dra. Patricia Mendoza", especialidad="Medicina general", tarjeta_profesional="CMVP 10234"
+        )
         andres = Veterinario(
-            nombre="Dr. Andrés Rojas", especialidad="Cirugía y odontología", tarjeta_profesional="MV-20871"
+            nombre="Dr. Andrés Rojas", especialidad="Cirugía y odontología", tarjeta_profesional="CMVP 20871"
         )
         camila = Veterinario(
-            nombre="Dra. Camila Torres", especialidad="Dermatología y vacunación", tarjeta_profesional="MV-31452"
+            nombre="Dra. Camila Torres", especialidad="Dermatología y vacunación", tarjeta_profesional="CMVP 31452"
         )
-        bd.add_all([laura, andres, camila])
+        bd.add_all([patricia, andres, camila])
         bd.add_all(
-            horario(laura, [LUNES, MARTES, MIERCOLES, JUEVES, VIERNES], ("08:00", "12:00"), ("14:00", "18:00"))
+            horario(patricia, [LUNES, MARTES, MIERCOLES, JUEVES, VIERNES], ("08:00", "12:00"), ("14:00", "18:00"))
             + horario(andres, [LUNES, MIERCOLES, VIERNES], ("09:00", "13:00"), ("14:00", "17:00"))
             + horario(andres, [SABADO], ("08:00", "13:00"))
             + horario(camila, [MARTES, JUEVES], ("08:00", "12:00"), ("14:00", "18:00"))
             + horario(camila, [SABADO], ("08:00", "13:00"))
         )
 
-        # --- Servicios -----------------------------------------------------------------
-        consulta = Servicio(nombre="Consulta general", precio=Decimal("60000"), duracion_minutos=30)
-        vacunacion = Servicio(nombre="Vacunación", precio=Decimal("45000"), duracion_minutos=30)
-        desparasitacion = Servicio(nombre="Desparasitación", precio=Decimal("35000"), duracion_minutos=30)
-        bano = Servicio(nombre="Baño y peluquería", precio=Decimal("55000"), duracion_minutos=60)
-        limpieza = Servicio(nombre="Limpieza dental", precio=Decimal("180000"), duracion_minutos=90)
+        # --- Servicios (precios en soles, IGV incluido) ---------------------------------
+        consulta = Servicio(nombre="Consulta general", precio=Decimal("70.00"), duracion_minutos=30)
+        vacunacion = Servicio(nombre="Vacunación", precio=Decimal("60.00"), duracion_minutos=30)
+        desparasitacion = Servicio(nombre="Desparasitación", precio=Decimal("35.00"), duracion_minutos=30)
+        bano = Servicio(nombre="Baño y corte", precio=Decimal("60.00"), duracion_minutos=60)
+        limpieza = Servicio(nombre="Profilaxis dental", precio=Decimal("280.00"), duracion_minutos=90)
         bd.add_all([consulta, vacunacion, desparasitacion, bano, limpieza])
 
         # --- Propietarios y mascotas ---------------------------------------------------
@@ -106,48 +109,49 @@ def cargar_datos() -> None:
             bd.add(p)
             return p
 
-        maria = propietario(
-            "María Fernanda López", "52345678", "3001112233", "maria.lopez@example.com",
+        # documento = DNI (8 dígitos); telefono = celular (9 dígitos, sin el código de país 51).
+        rosa = propietario(
+            "Rosa Quispe Mamani", "45678912", "987111222", "rosa.quispe@example.com",
             ("Luna", "Perro", "Labrador", "2021-03-15"),
-            ("Michi", "Gato", "Criollo", "2022-07-01"),
+            ("Michi", "Gato", "Mestizo", "2022-07-01"),
         )
-        carlos = propietario(
-            "Carlos Andrés Ramírez", "80123456", "3102223344", "carlos.ramirez@example.com",
-            ("Rocky", "Perro", "Bulldog francés", "2020-11-20"),
+        luis = propietario(
+            "Luis Alberto Huamán", "41234567", "986222333", "luis.huaman@example.com",
+            ("Rocky", "Perro", "Perro sin pelo del Perú", "2020-11-20"),
         )
-        ana = propietario(
-            "Ana Sofía Martínez", "1020304050", "3203334455", None,
+        carmen = propietario(
+            "Carmen Rojas Vargas", "70123456", "985333444", None,
             ("Nala", "Gato", "Siamés", "2023-01-10"),
             ("Coco", "Conejo", "Cabeza de león", "2023-05-05"),
         )
-        jorge = propietario(
-            "Jorge Iván Castro", "79876543", "3154445566", "jorge.castro@example.com",
+        diego = propietario(
+            "Diego Salazar Torres", "43219876", "984444555", "diego.salazar@example.com",
             ("Max", "Perro", "Golden retriever", "2019-06-30"),
         )
         lucia = propietario(
-            "Lucía Herrera", "1012345678", "3015556677", "lucia.herrera@example.com",
+            "Lucía Fernández Ramos", "72345678", "983555666", "lucia.fernandez@example.com",
             ("Simba", "Gato", "Persa", "2021-09-12"),
             ("Toby", "Perro", "Beagle", "2024-02-18"),
         )
         bd.flush()
-        luna, michi = maria.mascotas
-        (rocky,) = carlos.mascotas
-        nala, _coco = ana.mascotas
-        (max_,) = jorge.mascotas
+        luna, michi = rosa.mascotas
+        (rocky,) = luis.mascotas
+        nala, _coco = carmen.mascotas
+        (max_,) = diego.mascotas
         simba, toby = lucia.mascotas
 
         # --- Medicamentos ----------------------------------------------------------------
         amoxicilina = Medicamento(
-            nombre="Amoxicilina 250 mg (tabletas)", precio=Decimal("18000"), stock=40, vencimiento=hoy + timedelta(days=365)
+            nombre="Amoxicilina 250 mg (tabletas)", precio=Decimal("25.00"), stock=40, vencimiento=hoy + timedelta(days=365)
         )
         meloxicam = Medicamento(
-            nombre="Meloxicam 1,5 mg/ml (suspensión)", precio=Decimal("32000"), stock=15, vencimiento=hoy + timedelta(days=240)
+            nombre="Meloxicam 1,5 mg/ml (suspensión)", precio=Decimal("45.00"), stock=15, vencimiento=hoy + timedelta(days=240)
         )
         pipeta = Medicamento(
-            nombre="Pipeta antipulgas", precio=Decimal("45000"), stock=25, vencimiento=hoy + timedelta(days=500)
+            nombre="Pipeta antipulgas", precio=Decimal("55.00"), stock=25, vencimiento=hoy + timedelta(days=500)
         )
         desparasitante = Medicamento(
-            nombre="Desparasitante interno (tabletas)", precio=Decimal("12000"), stock=60, vencimiento=hoy + timedelta(days=400)
+            nombre="Desparasitante interno (tabletas)", precio=Decimal("15.00"), stock=60, vencimiento=hoy + timedelta(days=400)
         )
         bd.add_all([amoxicilina, meloxicam, pipeta, desparasitante])
 
@@ -165,17 +169,17 @@ def cargar_datos() -> None:
             bd.add(c)
             return c
 
-        c1 = cita_pasada(luna, laura, consulta, en(anterior(MARTES, hoy, 3), "09:00"), "Otitis")
-        c2 = cita_pasada(michi, laura, consulta, en(anterior(JUEVES, hoy, 1), "15:00"), "Control de peso")
+        c1 = cita_pasada(luna, patricia, consulta, en(anterior(MARTES, hoy, 3), "09:00"), "Otitis")
+        c2 = cita_pasada(michi, patricia, consulta, en(anterior(JUEVES, hoy, 1), "15:00"), "Control de peso")
         c3 = cita_pasada(rocky, andres, consulta, en(anterior(VIERNES, hoy, 2), "10:00"), "Cojera")
         bd.flush()
 
         consulta_luna = Consulta(
-            cita_id=c1.id, mascota_id=luna.id, veterinario_id=laura.id, fecha=c1.fecha_hora,
+            cita_id=c1.id, mascota_id=luna.id, veterinario_id=patricia.id, fecha=c1.fecha_hora,
             peso=Decimal("28.4"), diagnostico="Otitis externa leve", tratamiento="Limpieza de oídos y antibiótico oral",
         )
         consulta_michi = Consulta(
-            cita_id=c2.id, mascota_id=michi.id, veterinario_id=laura.id, fecha=c2.fecha_hora,
+            cita_id=c2.id, mascota_id=michi.id, veterinario_id=patricia.id, fecha=c2.fecha_hora,
             peso=Decimal("4.9"), diagnostico="Sobrepeso leve", tratamiento="Ajuste de dieta y control en 3 meses",
         )
         consulta_rocky = Consulta(
@@ -192,13 +196,13 @@ def cargar_datos() -> None:
         )
 
         # --- Factura de la consulta de Luna ----------------------------------------------
-        factura = Factura(propietario_id=maria.id, fecha=c1.fecha_hora_fin, total=Decimal("78000"))
+        factura = Factura(propietario_id=rosa.id, fecha=c1.fecha_hora_fin, total=Decimal("95.00"))
         bd.add(factura)
         bd.flush()
         bd.add_all(
             [
-                DetalleFactura(factura_id=factura.id, servicio_id=consulta.id, cantidad=1, subtotal=Decimal("60000")),
-                DetalleFactura(factura_id=factura.id, medicamento_id=amoxicilina.id, cantidad=1, subtotal=Decimal("18000")),
+                DetalleFactura(factura_id=factura.id, servicio_id=consulta.id, cantidad=1, subtotal=Decimal("70.00")),
+                DetalleFactura(factura_id=factura.id, medicamento_id=amoxicilina.id, cantidad=1, subtotal=Decimal("25.00")),
             ]
         )
 
@@ -239,12 +243,12 @@ def cargar_datos() -> None:
             )
 
     martes = proximo(MARTES, hoy)
-    agendar(luna, laura, consulta, en(martes, "09:00"), "Control anual")
-    agendar(max_, laura, consulta, en(martes, "09:30"), "Revisión de piel")
+    agendar(luna, patricia, consulta, en(martes, "09:00"), "Control anual")
+    agendar(max_, patricia, consulta, en(martes, "09:30"), "Revisión de piel")
     agendar(rocky, andres, limpieza, en(proximo(MIERCOLES, hoy), "09:00"), "Sarro dental")
     agendar(nala, camila, vacunacion, en(proximo(JUEVES, hoy), "10:00"), "Refuerzo triple felina")
     agendar(simba, camila, bano, en(proximo(SABADO, hoy), "08:00"), "Baño y corte")
-    cancelada = agendar(toby, laura, consulta, en(martes, "10:00"), "Diarrea")
+    cancelada = agendar(toby, patricia, consulta, en(martes, "10:00"), "Diarrea")
     with transaccion() as bd:
         agenda.cancelar_cita(bd, propietario_id=lucia.id, cita_id=cancelada["cita_id"], ahora=ahora)
 
@@ -274,7 +278,7 @@ def main() -> int:
     print(f"Base creada en {engine.url.render_as_string(hide_password=True)}")
     for tabla, total in conteos.items():
         print(f"  {tabla:<20} {total}")
-    print("Teléfonos de prueba: 3001112233, 3102223344, 3203334455, 3154445566, 3015556677")
+    print("Celulares de prueba: 987111222, 986222333, 985333444, 984444555, 983555666")
     engine.dispose()
     return 0
 

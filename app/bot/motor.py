@@ -3,8 +3,8 @@
 No sabe nada de HTTP ni de canales. La página web (app/canales/web.py) lo usa
 hoy, y un webhook de WhatsApp lo usaría igual:
 
-    motor.responder(sesion_id="whatsapp-573001112233", texto="Hola",
-                    canal="whatsapp", telefono_verificado="573001112233")
+    motor.responder(sesion_id="whatsapp-51987111222", texto="Hola",
+                    canal="whatsapp", telefono_verificado="51987111222")
 
 Flujo de un turno:
 1. Carga la sesión y su historial (formato de mensajes de la API de Claude).
@@ -174,7 +174,7 @@ class MotorBot:
             f"Cliente identificado en esta conversación: {'sí' if ctx.propietario_id else 'no'}.",
         ]
         if ctx.telefono_verificado:
-            lineas.append(f"Teléfono verificado por el canal: {ctx.telefono_verificado}.")
+            lineas.append(f"Celular verificado por el canal: {ctx.telefono_verificado}.")
         return "<contexto>\n" + "\n".join(lineas) + "\n</contexto>"
 
     def _ejecutar_herramientas(self, bloques: list[Any], ctx: ContextoHerramienta) -> list[dict]:

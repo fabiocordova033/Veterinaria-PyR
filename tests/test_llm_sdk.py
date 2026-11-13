@@ -60,11 +60,11 @@ def test_solicitudes_con_respaldo_de_modelo_y_herramientas(datos):
                 {"type": "tool_use", "id": "toolu_1", "name": "info_servicios", "input": {}},
             ],
         ),
-        _mensaje("end_turn", [{"type": "text", "text": "La consulta general cuesta $60.000."}]),
+        _mensaje("end_turn", [{"type": "text", "text": "La consulta general cuesta S/ 70.00."}]),
     )
     resultado = _motor(api, fallbacks="default", esfuerzo="low").responder("web-" + "9" * 32, "¿Precio de la consulta?")
 
-    assert resultado.texto == "La consulta general cuesta $60.000."
+    assert resultado.texto == "La consulta general cuesta S/ 70.00."
     assert len(api.solicitudes) == 2
 
     peticion, cuerpo = api.solicitudes[0]

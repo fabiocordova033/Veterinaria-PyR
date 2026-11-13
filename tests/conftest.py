@@ -11,8 +11,8 @@ os.environ.update(
         "AGENDA_ANTICIPACION_MINUTOS": "60",
         "AGENDA_DIAS_MAXIMOS": "60",
         "SESION_MINUTOS_INACTIVIDAD": "720",
-        "TELEFONO_DIGITOS_LOCALES": "10",
-        "CLINICA_ZONA_HORARIA": "America/Bogota",
+        "TELEFONO_DIGITOS_LOCALES": "9",
+        "CLINICA_ZONA_HORARIA": "America/Lima",
     }
 )
 
@@ -61,14 +61,14 @@ def datos(tmp_path) -> Datos:
                                           hora_inicio=time.fromisoformat(inicio), hora_fin=time.fromisoformat(fin)))
         bd.add(HorarioVeterinario(veterinario=vet2, dia_semana=0, hora_inicio=time(8), hora_fin=time(12)))
 
-        consulta = Servicio(nombre="Consulta general", precio=Decimal("60000"), duracion_minutos=30)
-        bano = Servicio(nombre="Baño", precio=Decimal("55000"), duracion_minutos=60)
-        limpieza = Servicio(nombre="Limpieza dental", precio=Decimal("180000"), duracion_minutos=90)
+        consulta = Servicio(nombre="Consulta general", precio=Decimal("70.00"), duracion_minutos=30)
+        bano = Servicio(nombre="Baño", precio=Decimal("60.00"), duracion_minutos=60)
+        limpieza = Servicio(nombre="Profilaxis dental", precio=Decimal("280.00"), duracion_minutos=90)
         bd.add_all([consulta, bano, limpieza])
 
-        propietario_a = Propietario(nombre="Ana", documento="1", telefono="3000000001")
+        propietario_a = Propietario(nombre="Ana", documento="1", telefono="900000001")
         propietario_a.mascotas = [Mascota(nombre="Firulais", especie="Perro"), Mascota(nombre="Mishi", especie="Gato")]
-        propietario_b = Propietario(nombre="Beto", documento="2", telefono="3000000002")
+        propietario_b = Propietario(nombre="Beto", documento="2", telefono="900000002")
         propietario_b.mascotas = [Mascota(nombre="Rex", especie="Perro")]
         bd.add_all([propietario_a, propietario_b])
         bd.flush()

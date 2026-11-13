@@ -15,13 +15,14 @@ from app.servicios.errores import ErrorNegocio
 
 
 def normalizar_telefono(telefono: str) -> str:
-    """Deja solo dígitos y quita el indicativo de país.
+    """Deja solo dígitos y quita el código de país.
 
-    "+57 300 111 2233", "573001112233" y "300-111-2233" quedan como "3001112233".
+    Con celulares de Perú (9 dígitos): "+51 987 111 222", "51987111222" y "987-111-222"
+    quedan como "987111222" (así llega también el número de WhatsApp).
     """
     digitos = re.sub(r"\D", "", telefono or "")
     if len(digitos) < 7:
-        raise ErrorNegocio("El número de teléfono no es válido. Pide al cliente que lo escriba completo.")
+        raise ErrorNegocio("El número de celular no es válido. Pide al cliente que lo escriba completo.")
     largo = ajustes.digitos_telefono_local
     return digitos[-largo:] if len(digitos) > largo else digitos
 

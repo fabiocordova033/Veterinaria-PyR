@@ -19,7 +19,9 @@ def info_servicios(sesion: Session) -> dict:
         "telefono": ajustes.clinica_telefono,
         "telefono_urgencias": ajustes.clinica_telefono_urgencias,
         "horario_atencion": ajustes.clinica_horario,
-        "moneda": "COP",
+        "moneda": ajustes.moneda,
+        "simbolo_moneda": ajustes.simbolo_moneda,
+        "nota_precios": ajustes.nota_precios,
         "servicios": [
             {
                 "id": s.id,

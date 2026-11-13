@@ -15,7 +15,7 @@
   let enviando = false;
 
   function hora() {
-    return new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    return new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
   }
 
   function agregarMensaje(texto, autor, extraClase) {
@@ -45,7 +45,7 @@
   function saludar() {
     agregarMensaje(
       "¡Hola! Soy el asistente virtual de " + nombreClinica +
-        ". Puedo responder tus preguntas y ayudarte con tus citas. Para empezar, ¿me compartes tu número de teléfono?",
+        ". Puedo responder tus preguntas y ayudarte con tus citas. Para empezar, ¿me compartes tu número de celular?",
       "bot"
     );
   }
